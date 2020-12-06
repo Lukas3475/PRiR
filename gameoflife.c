@@ -6,7 +6,7 @@
 
 #define DEFAULT_ITERATIONS 64
 #define GRID_WIDTH 256
-#define DIM 16 // assume a square grid
+#define DIM 16
 
 int mod(int a, int b)
 {
@@ -16,7 +16,7 @@ int mod(int a, int b)
 
 int main(int argc, char **argv)
 {
-
+    //Utworzenie planszy
     int global_grid[256] =
         {0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
          0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -35,13 +35,13 @@ int main(int argc, char **argv)
          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    // MPI Standard variable
+    // Standardowe zmienne MPI
     int num_procs;
     int ID, j;
     int iters = 0;
     int num_iterations;
 
-    // Setup number of iterations
+    // Ustawienie iteracji
     if (argc == 1)
     {
         num_iterations = DEFAULT_ITERATIONS;
@@ -56,88 +56,74 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    // Messaging variables
+    // Zmienne informacyjne
     MPI_Status stat;
 
-    // MPI Setup
+    // Ustawienie MPI
     if (MPI_Init(&argc, &argv) != MPI_SUCCESS)
     {
         printf("MPI_Init error\n");
     }
 
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs); // Set the num_procs
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs); // Ustawienie iloœci w¹tków
     MPI_Comm_rank(MPI_COMM_WORLD, &ID);
 
     assert(DIM % num_procs == 0);
 
-    // Setup environment
+    // Ustawienie œrodowiska
     int *arr = (int *)malloc(DIM * ((DIM / num_procs) + 2) * sizeof(int));
     for (iters = 0; iters < num_iterations; iters++)
     {
-        //printf("%d %d\n",ID, DIM * ((DIM / num_procs) + 2));
         j = DIM;
         for (int i = ID * (GRID_WIDTH / num_procs); i < (ID + 1) * (GRID_WIDTH / num_procs); i++)
         {
             arr[j] = global_grid[i];
-            // if(ID==1)
-            //     printf(" %d %d \n",j,i);
             j++;
         }
 
         if (num_procs != 1)
         {
-            //odd-even send_recv
             int incoming_1[DIM];
             int incoming_2[DIM];
             int send_1[DIM];
             int send_2[DIM];
             if (ID % 2 == 0)
             {
-
-                //first16
                 for (int i = 0; i < DIM; i++)
                 {
                     send_1[i] = arr[i + DIM];
-                    // printf(" - %d - ",send_1[i]);
-                    //printf(" %d %d\n ",i,i+DIM);
                 }
-                //first row to ID-1
-                MPI_Ssend(&send_1, DIM, MPI_INT, mod(ID - 1, num_procs), 1, MPI_COMM_WORLD);
+                MPI_Ssend(&send_1, DIM, MPI_INT, mod(ID - 1, num_procs), 1, MPI_COMM_WORLD); //przesy³anie danych miedzy procesami
 
-                //last16
                 for (int i = 0; i < DIM; i++)
                 {
                     send_2[i] = arr[(DIM * (DIM / num_procs)) + i];
-                    // printf(" %d %d\n ",i,(DIM * (DIM / num_procs)) + i);
                 }
-                //last row to ID+1
-                MPI_Ssend(&send_2, DIM, MPI_INT, mod(ID + 1, num_procs), 1, MPI_COMM_WORLD);
+                MPI_Ssend(&send_2, DIM, MPI_INT, mod(ID + 1, num_procs), 1, MPI_COMM_WORLD); //przesy³anie danych miedzy procesami
             }
             else
             {
-                MPI_Recv(&incoming_2, DIM, MPI_INT, mod(ID + 1, num_procs), 1, MPI_COMM_WORLD, &stat);
-                MPI_Recv(&incoming_1, DIM, MPI_INT, mod(ID - 1, num_procs), 1, MPI_COMM_WORLD, &stat);
+                MPI_Recv(&incoming_2, DIM, MPI_INT, mod(ID + 1, num_procs), 1, MPI_COMM_WORLD, &stat); //odbieranie danych miedzy procesami
+                MPI_Recv(&incoming_1, DIM, MPI_INT, mod(ID - 1, num_procs), 1, MPI_COMM_WORLD, &stat); //odbieranie danych miedzy procesami
             }
             if (ID % 2 == 0)
             {
-                MPI_Recv(&incoming_2, DIM, MPI_INT, mod(ID + 1, num_procs), 1, MPI_COMM_WORLD, &stat);
-                MPI_Recv(&incoming_1, DIM, MPI_INT, mod(ID - 1, num_procs), 1, MPI_COMM_WORLD, &stat);
+                MPI_Recv(&incoming_2, DIM, MPI_INT, mod(ID + 1, num_procs), 1, MPI_COMM_WORLD, &stat); //odbieranie danych miedzy procesami
+                MPI_Recv(&incoming_1, DIM, MPI_INT, mod(ID - 1, num_procs), 1, MPI_COMM_WORLD, &stat); //odbieranie danych miedzy procesami
             }
             else
             {
-                //first16
                 for (int i = 0; i < DIM; i++)
                 {
                     send_1[i] = arr[i + DIM];
                 }
-                MPI_Ssend(&send_1, DIM, MPI_INT, mod(ID - 1, num_procs), 1, MPI_COMM_WORLD);
+                MPI_Ssend(&send_1, DIM, MPI_INT, mod(ID - 1, num_procs), 1, MPI_COMM_WORLD); //przesy³anie danych miedzy procesami
 
-                //last16
                 for (int i = 0; i < DIM; i++)
                 {
                     send_2[i] = arr[(DIM * (DIM / num_procs)) + i];
                 }
-                MPI_Ssend(&send_2, DIM, MPI_INT, mod(ID + 1, num_procs), 1, MPI_COMM_WORLD);
+                MPI_Ssend(&send_2, DIM, MPI_INT, mod(ID + 1, num_procs), 1, MPI_COMM_WORLD); //przesy³anie danych miedzy procesami
             }
             for (int i = 0; i < DIM; i++)
             {
@@ -150,15 +136,13 @@ int main(int argc, char **argv)
             for (int i = 0; i < DIM; i++)
             {
                 arr[i + GRID_WIDTH + DIM] = global_grid[i];
-                //printf(" %d %d \n",i + GRID_WIDTH+DIM,i);
             }
             for (int i = GRID_WIDTH; i < GRID_WIDTH + DIM; i++)
             {
                 arr[i - GRID_WIDTH] = global_grid[i - DIM];
-                //printf(" %d %d \n",i - GRID_WIDTH,i-DIM);
             }
         }
-        //game logic neighbours
+        //logika gry, s¹siedztwo
         int * final = (int *)malloc(DIM * ((DIM / num_procs)) * sizeof(int));
 
         for (int k = DIM; k < DIM * ((DIM / num_procs) + 1); k++)
@@ -196,9 +180,9 @@ int main(int argc, char **argv)
             global_grid[i] = final[j];
             j++;
         }
-        MPI_Gather(final, DIM * (DIM / num_procs), MPI_INT, &global_grid, DIM * (DIM / num_procs), MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Gather(final, DIM * (DIM / num_procs), MPI_INT, &global_grid, DIM * (DIM / num_procs), MPI_INT, 0, MPI_COMM_WORLD); //Zbieranie danych z procesow
 
-        // Output the updated grid state
+        // Plansza po danej liczbie iteracji
         if (ID == 0)
         {
             printf("\nIteration %d: final grid:\n", iters);
@@ -213,8 +197,6 @@ int main(int argc, char **argv)
             printf("\n");
         }
     }
-
-    // Clean up memory
     free(arr);
-    MPI_Finalize(); // finalize so I can exit
+    MPI_Finalize();
 }
